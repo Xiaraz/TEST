@@ -242,10 +242,11 @@ class CryptoAnalyzer:
             change_24h_str = f"{change_24h:+.2f}%" if change_24h else "N/A"
             change_7d_str = f"{change_7d:+.2f}%" if change_7d else "N/A"
 
-            print(f"{rank:<6}{name[:15]} ({symbol})"[:20].ljust(20)
-                  f"${price:,.2f}".ljust(15)
-                  f"{change_24h_str}".ljust(12)
-                  f"{change_7d_str}".ljust(12)
+            name_col = f"{name[:15]} ({symbol})"[:17]
+            print(f"{rank:<6}{name_col:<20}"
+                  f"${price:<14,.2f}"
+                  f"{change_24h_str:<12}"
+                  f"{change_7d_str:<12}"
                   f"${market_cap:,.0f}")
 
     def technical_analysis(self, crypto_id: str, days: int = 30):
