@@ -256,7 +256,8 @@ class YouTubeCoach:
                 print(dim(analysis["suggestion"]))
             return
 
-        print(f"\n{header(f'ANALYSE DES TENDANCES : {analysis[\"game\"]}')}\n")
+        game_name = analysis["game"]
+        print(f"\n{header('ANALYSE DES TENDANCES : ' + game_name)}\n")
 
         # General info
         info_lines = [
@@ -304,7 +305,8 @@ class YouTubeCoach:
     def _show_general_trends(self):
         """Display general gaming trends."""
         trends = self.trend_analyzer.get_general_trends()
-        print(f"\n{header(f'TENDANCES GAMING - {trends[\"date\"]}')}\n")
+        trends_date = trends["date"]
+        print(f"\n{header('TENDANCES GAMING - ' + trends_date)}\n")
 
         print(bold("Tendances Generales :"))
         for trend in trends["tendances_generales"]:
@@ -356,10 +358,12 @@ class YouTubeCoach:
         for i, idea in enumerate(ideas, 1):
             print(f"{c(f'  IDEE #{i}', Colors.BOLD + Colors.CYAN)}")
             print(f"  {bold(idea['titre'])}")
-            print(f"  {dim(f'Format: {idea.get(\"categorie\", \"N/A\")} | '
-                        f'Viral: {idea.get(\"potentiel_viral\", \"N/A\")} | '
-                        f'Difficulte: {idea.get(\"difficulte\", \"N/A\")}')}")
-            print(f"  {dim(f'Duree: {idea.get(\"duree_recommandee\", \"N/A\")}')}")
+            cat = idea.get('categorie', 'N/A')
+            viral = idea.get('potentiel_viral', 'N/A')
+            diff = idea.get('difficulte', 'N/A')
+            duree = idea.get('duree_recommandee', 'N/A')
+            print(f"  {dim('Format: ' + cat + ' | Viral: ' + viral + ' | Difficulte: ' + diff)}")
+            print(f"  {dim('Duree: ' + duree)}")
             print(f"  Hook : {accent(idea.get('hook_suggestion', ''))}")
             print(f"  {dim(idea.get('description', ''))}")
             print(f"  Tags : {dim(' '.join(idea.get('tags_suggeres', [])))}")
@@ -424,13 +428,18 @@ class YouTubeCoach:
 
     def _display_script(self, script):
         """Display a generated script."""
-        print(f"\n{header(f'SCRIPT : {script[\"titre_video\"]}')}")
-        print(f"{dim(f'Jeu: {script[\"jeu\"]} | Format: {script[\"format\"]} | Date: {script[\"date_creation\"]}')}\n")
+        s_titre = script["titre_video"]
+        s_jeu = script["jeu"]
+        s_fmt = script["format"]
+        s_date = script["date_creation"]
+        print(f"\n{header('SCRIPT : ' + s_titre)}")
+        print(f"{dim('Jeu: ' + s_jeu + ' | Format: ' + s_fmt + ' | Date: ' + s_date)}\n")
 
         for section in script["sections"]:
             print(c(f"{'=' * 60}", Colors.CYAN))
             print(f"{c(section['nom'], Colors.BOLD + Colors.YELLOW)}")
-            print(f"{dim(f'Duree : {section[\"duree\"]}')}")
+            sec_duree = section["duree"]
+            print(f"{dim('Duree : ' + sec_duree)}")
             print(c(f"{'─' * 60}", Colors.DIM))
 
             print(f"\n{bold('Instructions :')}")
@@ -505,8 +514,10 @@ class YouTubeCoach:
         print(f"\n{dim('Recherche en cours (cela peut prendre quelques secondes)...')}")
         report = self.game_researcher.full_research(game)
 
-        print(f"\n{header(f'RAPPORT DE RECHERCHE : {report[\"jeu\"].upper()}')}")
-        print(f"{dim(f'Date: {report[\"date_recherche\"]}')}\n")
+        r_jeu = report["jeu"].upper()
+        r_date = report["date_recherche"]
+        print(f"\n{header('RAPPORT DE RECHERCHE : ' + r_jeu)}")
+        print(f"{dim('Date: ' + r_date)}\n")
 
         # General info
         info = report.get("informations_generales", {})
@@ -571,18 +582,23 @@ class YouTubeCoach:
 
         calendar = self.game_researcher.get_content_calendar(game, weeks)
 
-        print(f"\n{header(f'CALENDRIER DE CONTENU : {calendar[\"jeu\"]}')}")
-        print(f"{dim(f'Duree : {calendar[\"duree\"]}')}\n")
+        cal_jeu = calendar["jeu"]
+        cal_duree = calendar["duree"]
+        print(f"\n{header('CALENDRIER DE CONTENU : ' + cal_jeu)}")
+        print(f"{dim('Duree : ' + cal_duree)}\n")
 
         for week in calendar["calendrier"]:
             print(c(f"{'─' * 50}", Colors.CYAN))
-            print(f"{c(f'  SEMAINE {week[\"semaine\"]}', Colors.BOLD + Colors.YELLOW)}")
+            sem_num = week["semaine"]
+            print(f"{c('  SEMAINE ' + str(sem_num), Colors.BOLD + Colors.YELLOW)}")
             print(c(f"{'─' * 50}", Colors.CYAN))
 
             for video in week["videos"]:
                 print(f"  {bold(video['jour'])} - {video['format']}")
                 print(f"    {dim(video['titre_suggestion'])}")
-                print(f"    {dim(f'Duree: {video[\"duree\"]} | Publier a: {video[\"horaire\"]}')}")
+                v_duree = video["duree"]
+                v_horaire = video["horaire"]
+                print(f"    {dim('Duree: ' + v_duree + ' | Publier a: ' + v_horaire)}")
 
             shorts = week.get("shorts", {})
             print(f"\n  {accent('Shorts')} : {shorts.get('frequence', '1/jour')}")
@@ -764,7 +780,9 @@ class YouTubeCoach:
         ideas = self.idea_generator.generate_ideas(game, count=5)
         for i, idea in enumerate(ideas, 1):
             print(f"\n  {c(f'#{i}', Colors.CYAN)} {bold(idea['titre'])}")
-            print(f"      {dim(f'{idea.get(\"categorie\", \"\")} | Viral: {idea.get(\"potentiel_viral\", \"\")}')}")
+            cat = idea.get("categorie", "")
+            viral = idea.get("potentiel_viral", "")
+            print(f"      {dim(cat + ' | Viral: ' + viral)}")
 
         # 3. Script for first idea
         print(f"\n{header('3/5 - SCRIPT (premiere idee)')}")
@@ -794,7 +812,8 @@ class YouTubeCoach:
         print(f"\n{header('5/5 - CALENDRIER (4 semaines)')}")
         calendar = self.game_researcher.get_content_calendar(game, weeks=4)
         for week in calendar["calendrier"][:2]:  # Show first 2 weeks
-            print(f"\n  {bold(f'Semaine {week[\"semaine\"]}')}")
+            w_num = week["semaine"]
+            print(f"\n  {bold('Semaine ' + str(w_num))}")
             for video in week["videos"]:
                 print(f"    {video['jour']} : {dim(video['format'])}")
 
