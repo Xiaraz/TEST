@@ -16,6 +16,7 @@ from youtube_coach.data.games_database import (
     TRENDING_GAMING_TOPICS,
     VIDEO_FORMATS_DATABASE,
 )
+from youtube_coach.modules.web_scraper import WebScraper
 
 
 class TrendAnalyzer:
@@ -25,15 +26,8 @@ class TrendAnalyzer:
     YOUTUBE_SEARCH_URL = "https://www.youtube.com/results"
 
     def __init__(self):
-        self.session = requests.Session()
-        self.session.headers.update({
-            "User-Agent": (
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/120.0.0.0 Safari/537.36"
-            ),
-            "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
-        })
+        self.web_scraper = WebScraper()
+        self.session = self.web_scraper.session
 
     def get_trending_games(self, top_n=10):
         """Get the top trending games based on our database and current scores."""
@@ -132,18 +126,15 @@ class TrendAnalyzer:
                     break
 
         if not game_data:
-            return {
-                "found": False,
-                "message": f"Jeu '{game_name}' non trouve dans la base de donnees.",
-                "suggestion": "Essayez avec un des jeux suivants : "
-                + ", ".join(d["name"] for d in GAMES_DATABASE.values()),
-            }
+            # Game NOT in local DB -> search the web!
+            return self._analyze_from_web(game_name)
 
-        # Search for recent trending content
-        search_results = self.search_youtube_trends(f"{game_data['name']} 2025")
+        # Game IS in local DB -> use local data + web search
+        search_results = self.search_youtube_trends(game_data['name'] + " 2025")
 
         analysis = {
             "found": True,
+            "source": "base_locale",
             "game": game_data["name"],
             "genre": game_data["genre"],
             "platforms": game_data["platforms"],
@@ -160,6 +151,33 @@ class TrendAnalyzer:
         }
 
         return analysis
+
+    def _analyze_from_web(self, game_name):
+        """Analyze a game using web scraping when not in local database."""
+        web_data = self.web_scraper.research_unknown_game(game_name)
+
+        return {
+            "found": True,
+            "source": "recherche_web",
+            "game": game_name,
+            "genre": web_data["genre_detecte"],
+            "platforms": web_data["plateformes_detectees"],
+            "audience_cible": "Detectee par recherche web",
+            "score_popularite": web_data["popularity_score"],
+            "meilleurs_formats": web_data["formats_populaires_detectes"],
+            "sujets_tendance": web_data["sujets_tendance_detectes"],
+            "duree_recommandee": "10-15 min (standard gaming)",
+            "meilleurs_horaires": ["17h-19h", "20h-22h"],
+            "hashtags_recommandes": web_data["hashtags_suggeres"],
+            "formats_concurrents": web_data["formats_populaires_detectes"],
+            "videos_tendance": web_data["videos_populaires"],
+            "videos_tips": web_data["videos_tips"],
+            "videos_fr": web_data["videos_fr"],
+            "contenu_francais": web_data["contenu_francais"],
+            "chaines_actives": web_data["chaines_actives"],
+            "top_chaines": web_data["top_chaines"],
+            "recommandations": web_data["recommandations"],
+        }
 
     def _generate_recommendations(self, game_data):
         """Generate strategic recommendations based on game data."""

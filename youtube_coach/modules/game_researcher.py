@@ -9,21 +9,15 @@ from datetime import datetime
 import requests
 
 from youtube_coach.data.games_database import GAMES_DATABASE, VIDEO_FORMATS_DATABASE
+from youtube_coach.modules.web_scraper import WebScraper
 
 
 class GameResearcher:
     """Researches games to provide comprehensive data for content creation."""
 
     def __init__(self):
-        self.session = requests.Session()
-        self.session.headers.update({
-            "User-Agent": (
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/120.0.0.0 Safari/537.36"
-            ),
-            "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
-        })
+        self.web_scraper = WebScraper()
+        self.session = self.web_scraper.session
 
     def full_research(self, game_name):
         """Perform comprehensive research on a game for content creation."""
@@ -38,13 +32,18 @@ class GameResearcher:
 
         if game_data:
             report.update(self._build_detailed_report(game_data))
+            # Add YouTube search data for known games
+            report["recherche_youtube"] = self._search_youtube_data(game_data["name"])
         else:
-            report.update(self._build_generic_report(game_name))
-
-        # Add YouTube search data
-        report["recherche_youtube"] = self._search_youtube_data(
-            game_data["name"] if game_data else game_name
-        )
+            # Use web scraper for unknown games
+            web_data = self.web_scraper.research_unknown_game(game_name)
+            report.update(self._build_web_report(game_name, web_data))
+            report["recherche_youtube"] = {
+                "videos_populaires": web_data.get("videos_populaires", []),
+                "videos_tips": web_data.get("videos_tips", []),
+                "videos_fr": web_data.get("videos_fr", []),
+            }
+            report["web_data"] = web_data
 
         # Add content strategy
         report["strategie_contenu"] = self._build_content_strategy(game_data, game_name)
@@ -123,6 +122,38 @@ class GameResearcher:
                 "Les recommandations sont generiques. Ajoutez-le a la base "
                 "pour des resultats plus precis."
             ),
+        }
+
+    def _build_web_report(self, game_name, web_data):
+        """Build a report from web-scraped data for unknown games."""
+        score = web_data.get("popularity_score", 50)
+        return {
+            "informations_generales": {
+                "nom": game_name,
+                "genre": web_data.get("genre_detecte", "Non determine"),
+                "plateformes": web_data.get("plateformes_detectees", ["Non determine"]),
+                "audience_cible": "Detectee par recherche web",
+                "score_popularite": str(score) + "/100 (estime)",
+                "source": "Recherche Web YouTube",
+            },
+            "analyse_contenu": {
+                "formats_recommandes": web_data.get("formats_populaires_detectes", []),
+                "sujets_tendance": web_data.get("sujets_tendance_detectes", []),
+                "formats_concurrents": web_data.get("formats_populaires_detectes", []),
+                "hashtags": web_data.get("hashtags_suggeres", []),
+            },
+            "parametres_optimaux": {
+                "duree_video": "10-15 min (recommandation standard)",
+                "horaires_publication": ["17h-19h", "20h-22h"],
+                "frequence_recommandee": "2-3 videos/semaine",
+            },
+            "analyse_web": {
+                "videos_trouvees": web_data.get("videos_trouvees", 0),
+                "chaines_actives": web_data.get("chaines_actives", 0),
+                "top_chaines": web_data.get("top_chaines", []),
+                "contenu_francais": web_data.get("contenu_francais", "Non determine"),
+                "popularite_estimee": web_data.get("popularite_estimee", "Non determine"),
+            },
         }
 
     def _recommend_frequency(self, game_data):

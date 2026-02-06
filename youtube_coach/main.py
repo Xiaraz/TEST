@@ -247,46 +247,93 @@ class YouTubeCoach:
         if not game:
             return
 
-        print(f"\n{dim('Analyse en cours...')}")
+        print(f"\n{dim('Analyse en cours (recherche web si necessaire)...')}")
         analysis = self.trend_analyzer.analyze_game_trends(game)
 
         if not analysis.get("found"):
             print(error(f"\n{analysis.get('message', 'Jeu non trouve.')}"))
-            if "suggestion" in analysis:
-                print(dim(analysis["suggestion"]))
             return
 
         game_name = analysis["game"]
-        print(f"\n{header('ANALYSE DES TENDANCES : ' + game_name)}\n")
+        source = analysis.get("source", "base_locale")
+        print(f"\n{header('ANALYSE DES TENDANCES : ' + game_name)}")
+
+        if source == "recherche_web":
+            print(f"  {c('[DONNEES EN DIRECT - Recherche YouTube]', Colors.MAGENTA)}")
+        else:
+            print(f"  {c('[Base de donnees locale]', Colors.DIM)}")
 
         # General info
+        platforms = analysis.get('platforms', [])
+        if isinstance(platforms, list):
+            platforms_str = ', '.join(platforms)
+        else:
+            platforms_str = str(platforms)
+
         info_lines = [
-            f"Genre : {analysis['genre']}",
-            f"Plateformes : {', '.join(analysis['platforms'])}",
-            f"Audience : {analysis['audience_cible']}",
-            f"Popularite : {analysis['score_popularite']}/100",
+            "Genre : " + str(analysis.get('genre', 'N/A')),
+            "Plateformes : " + platforms_str,
+            "Audience : " + str(analysis.get('audience_cible', 'N/A')),
+            "Popularite : " + str(analysis.get('score_popularite', 'N/A')) + "/100",
         ]
         print(box("Informations", info_lines))
 
+        # Web-specific: show channels and FR content status
+        if source == "recherche_web":
+            chaines = analysis.get("chaines_actives", 0)
+            fr_status = analysis.get("contenu_francais", "")
+            print(f"\n{bold('Donnees YouTube en direct :')}")
+            print(f"  {c('>', Colors.CYAN)} Chaines actives trouvees : {bold(str(chaines))}")
+            print(f"  {c('>', Colors.CYAN)} Contenu FR : {accent(fr_status)}")
+
+            top_chaines = analysis.get("top_chaines", [])
+            if top_chaines:
+                print(f"\n{bold('Top Chaines sur ce jeu :')}")
+                for ch in top_chaines[:8]:
+                    print(f"  {c('>', Colors.MAGENTA)} {ch}")
+
+            # Show real videos found
+            videos = analysis.get("videos_tendance", [])
+            if videos:
+                print(f"\n{bold('Videos Populaires Trouvees :')}")
+                for v in videos[:5]:
+                    titre = v.get("titre", v.get("title", ""))
+                    vues = v.get("vues", v.get("views", ""))
+                    print(f"  {c('>', Colors.GREEN)} {titre}")
+                    if vues:
+                        print(f"    {dim(str(vues))}")
+
+            videos_fr = analysis.get("videos_fr", [])
+            if videos_fr:
+                print(f"\n{bold('Videos FR Trouvees :')}")
+                for v in videos_fr[:5]:
+                    titre = v.get("titre", v.get("title", ""))
+                    chaine = v.get("chaine", v.get("channel", ""))
+                    print(f"  {c('>', Colors.GREEN)} {titre}")
+                    if chaine:
+                        print(f"    {dim('Chaine: ' + chaine)}")
+
         # Trending topics
         print(f"\n{bold('Sujets Tendance :')}")
-        for topic in analysis["sujets_tendance"]:
+        for topic in analysis.get("sujets_tendance", []):
             print(f"  {c('>', Colors.GREEN)} {topic}")
 
         # Best formats
         print(f"\n{bold('Meilleurs Formats :')}")
-        for fmt in analysis["meilleurs_formats"][:6]:
+        for fmt in analysis.get("meilleurs_formats", [])[:6]:
             print(f"  {c('>', Colors.CYAN)} {fmt}")
 
         # Recommended settings
         print(f"\n{bold('Parametres Recommandes :')}")
-        print(f"  Duree : {accent(analysis['duree_recommandee'])}")
-        print(f"  Horaires : {accent(', '.join(analysis['meilleurs_horaires']))}")
-        print(f"  Hashtags : {dim(' '.join(analysis['hashtags_recommandes']))}")
+        print(f"  Duree : {accent(analysis.get('duree_recommandee', '10-15 min'))}")
+        horaires = analysis.get('meilleurs_horaires', ['17h-19h'])
+        print(f"  Horaires : {accent(', '.join(horaires))}")
+        hashtags = analysis.get('hashtags_recommandes', [])
+        print(f"  Hashtags : {dim(' '.join(hashtags))}")
 
         # Recommendations
         print(f"\n{bold('Recommandations :')}")
-        for rec in analysis["recommandations"]:
+        for rec in analysis.get("recommandations", []):
             print(f"  {c('!', Colors.YELLOW)} {rec}")
 
     def _show_trending_formats(self):
@@ -511,18 +558,68 @@ class YouTubeCoach:
 
     def _show_full_research(self, game):
         """Display full research report for a game."""
-        print(f"\n{dim('Recherche en cours (cela peut prendre quelques secondes)...')}")
+        print(f"\n{dim('Recherche en cours (recherche web si necessaire)...')}")
         report = self.game_researcher.full_research(game)
 
         r_jeu = report["jeu"].upper()
         r_date = report["date_recherche"]
+        in_db = report.get("dans_base_donnees", False)
         print(f"\n{header('RAPPORT DE RECHERCHE : ' + r_jeu)}")
-        print(f"{dim('Date: ' + r_date)}\n")
+        print(f"{dim('Date: ' + r_date)}")
+        if in_db:
+            print(f"  {dim('[Source: Base de donnees locale]')}")
+        else:
+            print(f"  {c('[Source: RECHERCHE WEB YouTube en direct]', Colors.MAGENTA)}")
+        print()
 
         # General info
         info = report.get("informations_generales", {})
-        info_lines = [f"{k}: {v}" for k, v in info.items()]
+        info_lines = []
+        for k, v in info.items():
+            if isinstance(v, list):
+                info_lines.append(k + ": " + ", ".join(str(x) for x in v))
+            else:
+                info_lines.append(k + ": " + str(v))
         print(box("Informations Generales", info_lines))
+
+        # Web-specific analysis
+        web_analysis = report.get("analyse_web", {})
+        if web_analysis:
+            print(f"\n{header('ANALYSE WEB EN DIRECT')}")
+            vids_found = web_analysis.get("videos_trouvees", 0)
+            chaines = web_analysis.get("chaines_actives", 0)
+            fr_status = web_analysis.get("contenu_francais", "")
+            pop = web_analysis.get("popularite_estimee", "")
+            print(f"  Videos trouvees : {bold(str(vids_found))}")
+            print(f"  Chaines actives : {bold(str(chaines))}")
+            print(f"  Popularite estimee : {accent(str(pop))}")
+            print(f"  Contenu FR : {accent(str(fr_status))}")
+
+            top_ch = web_analysis.get("top_chaines", [])
+            if top_ch:
+                print(f"\n{bold('Top Chaines :')}")
+                for ch in top_ch[:8]:
+                    print(f"  {c('>', Colors.MAGENTA)} {ch}")
+
+        # Show YouTube videos found
+        yt_data = report.get("recherche_youtube", {})
+        if isinstance(yt_data, dict):
+            for cat_name, cat_videos in yt_data.items():
+                if cat_videos:
+                    label = cat_name.replace("_", " ").title()
+                    print(f"\n{bold('YouTube - ' + label + ' :')}")
+                    for v in cat_videos[:5]:
+                        titre = v.get("titre", v.get("title", ""))
+                        vues = v.get("vues", v.get("views", ""))
+                        chaine = v.get("chaine", v.get("channel", ""))
+                        print(f"  {c('>', Colors.GREEN)} {titre}")
+                        details = []
+                        if vues:
+                            details.append(str(vues))
+                        if chaine:
+                            details.append(chaine)
+                        if details:
+                            print(f"    {dim(' | '.join(details))}")
 
         # Content analysis
         content = report.get("analyse_contenu", {})
@@ -538,7 +635,10 @@ class YouTubeCoach:
         settings = report.get("parametres_optimaux", {})
         print(f"\n{bold('Parametres Optimaux :')}")
         for k, v in settings.items():
-            print(f"  {accent(k)} : {v}")
+            if isinstance(v, list):
+                print(f"  {accent(k)} : {', '.join(str(x) for x in v)}")
+            else:
+                print(f"  {accent(k)} : {v}")
 
         # Strategy
         strategy = report.get("strategie_contenu", {})
